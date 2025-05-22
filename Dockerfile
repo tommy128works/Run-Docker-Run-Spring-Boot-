@@ -1,35 +1,38 @@
-# copied from ChatGPT - please review
+# ===== Stage 1: Builder =====
+FROM eclipse-temurin:21-jdk AS builder
 
-# ===== Stage 1: Build =====
-FROM eclipse-temurin:21-jdk as build
+# Set working directory
+WORKDIR /app
+
+# Copy Gradle Wrapper files
+COPY gradlew gradlew.bat .
+
+# Copy gradle folder into the gradle folder in the working directory
+COPY gradle ./gradle
+
+# Copy the Gradle project files into the working directory
+COPY build.gradle settings.gradle .
+
+# Copy src folder into the src folder in the working directory
+COPY src ./src
+
+# Ensure Gradle Wrapper has executable permissions
+RUN chmod +x gradlew
+
+# Build the application
+RUN ./gradlew bootJar --no-daemon
+
+# ===== Stage 2: Production =====
+FROM eclipse-temurin:21-jre AS production
 
 # # Set working directory
-# WORKDIR /build
-#
-# # Copy Gradle wrapper and configuration files first (for better caching)
-# COPY gradlew settings.gradle.kts build.gradle.kts ./
-# COPY gradle ./gradle
-#
-# # Download dependencies (faster rebuilds)
-# RUN ./gradlew dependencies
-#
-# # Copy source code last
-# COPY src ./src
-#
-# # Build the application
-# RUN ./gradlew clean build -x test
+WORKDIR /app
 
-# ===== Stage 2: Run =====
-FROM eclipse-temurin:21-jre
+# Copy the JAR from the build stage
+COPY --from=builder /app/build/libs/hyper-web-app-0.0.1-SNAPSHOT.jar app.jar
 
-# # Set working directory
-# WORKDIR /app
-#
-# # Copy the JAR from the build stage
-# COPY --from=build /build/build/libs/*.jar app.jar
-#
-# # Expose the app's port
-# EXPOSE 8080
-#
-# # Run the application
-# ENTRYPOINT ["java", "-jar", "app.jar"]
+# Expose the app's port
+EXPOSE 8080
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
